@@ -1,50 +1,60 @@
-#import "@preview/classy-german-invoice:0.3.2": invoice
+#import "../lib.typ": invoice
 
 #show: invoice(
   // Invoice number
-  "2023-001",
+  "2024-001",
   // Invoice date
   datetime(year: 2024, month: 09, day: 03),
-  // Items
+  // Items (hours × rate = amount)
   (
     (
-      description: "The first service provided. The first service provided. The first service provided",
-      price: 200,
+      description: "Initial project planning and requirements gathering",
+      hours: 8.0,
+      rate: 150.00,
     ),
     (
-      description: "The second service provided",
-      price: 150.2
+      description: "Development — frontend implementation",
+      hours: 12.5,
+      rate: 150.00,
+    ),
+    (
+      description: "Development — backend API integration",
+      hours: 10.0,
+      rate: 150.00,
+      discount: 0.10, // 10% courtesy discount
+    ),
+    (
+      description: "Code review and documentation",
+      hours: 3.5,
+      rate: 150.00,
     ),
   ),
   // Author
   (
-    name: "Kerstin Humm",
-    street: "Straße der Privatsphäre und Stille 1",
-    zip: "54321",
-    city: "Potsdam",
-    tax_nr: "12345/67890",
+    name: "Your Name",
+    street: "123 Main St",
+    city: "Anytown",
+    zip: "12345",
+    tax_id: "12-3456789",
     // optional signature, can be omitted
     signature: image("example_signature.png", width: 5em)
   ),
   // Recipient
   (
-    name: "Erika Mustermann",
-    street: "Musterallee",
-    zip: "12345",
-    city: "Musterstadt",
+    name: "Client Company, Inc.",
+    street: "456 Business Blvd",
+    city: "Commerce City",
+    zip: "67890",
   ),
   // Bank account
   (
-    name: "Todd Name",
-    bank: "Deutsche Postbank AG",
-    iban: "DE89370400440532013000",
-    bic: "PBNKDEFF",
-    // There is currently only one gendered term in this template.
-    // You can overwrite it, or omit it and just choose the default.
-    gender: (account_holder: "Kontoinhaberin")
+    name: "Your Name",
+    bank: "Chase Bank",
+    routing: "021000021",
+    account: "1234567890",
   ),
-  // Umsatzsteuersatz (VAT)
-  vat: 0.19,
-  kleinunternehmer: true,
+  // Tax rate (set to 0.0 if not applicable)
+  tax-rate: 0.0,
+  // Optional note about rate flexibility
+  rate-note: "Hours and rates are provided for transparency. Please don't hesitate to reach out if you would like to discuss any adjustments.",
 )
-

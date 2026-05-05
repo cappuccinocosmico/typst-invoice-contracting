@@ -1,42 +1,35 @@
-#import "@preview/cades:0.3.1": qr-code
-#import "@preview/ibanator:0.1.0": iban
-
-// Generates an invoice
+// Generates a US-style contractor invoice with hour tracking
 #let invoice(
   // The invoice number
   invoice-nr,
   // The date on which the invoice was created
   invoice-date,
-  // A list of items
+  // A list of items (each with description, hours, rate, optional discount)
   items,
   // Name and postal address of the author
   author,
   // Name and postal address of the recipient
   recipient,
-  // Name and bank account details of the entity receiving the money
+  // Bank account details
   bank-account,
   // The text to display below the items
-  invoice-text: "Vielen Dank für die Zusammenarbeit. Die Rechnungssumme überweisen Sie bitte
-    innerhalb von 14 Tagen ohne Abzug auf mein unten genanntes Konto unter Nennung
-    der Rechnungsnummer.",
-  // Optional VAT
-  vat: 0.19,
-  // Check if the german § 19 UStG applies
-  kleinunternehmer: false,
-  // Is the price of items including Vat or excluding vat? Default is B2C, inclusive.
-  includes-vat: true,
+  invoice-text: "Thank you for your business. Payment is due within 14 days. Please remit payment to the account below, referencing the invoice number.",
+  // Optional tax rate (e.g. 0.08 for 8% sales tax)
+  tax-rate: 0.0,
+  // Is the price of items including tax or excluding tax?
+  includes-tax: false,
+  // Optional note displayed below the invoice table about rates
+  rate-note: "Hours and rates are provided for transparency. Please don't hesitate to reach out if you would like to discuss any adjustments.",
 ) = {
-  set text(lang: "de", region: "DE")
+  set text(lang: "en", region: "US")
 
   set page(paper: "a4", margin: (x: 20%, y: 20%, top: 20%, bottom: 20%))
 
-  // Typst can't format numbers yet, so we use this from here:
-  // https://github.com/typst/typst/issues/180#issuecomment-1484069775
-  let format_currency(number, locale: "de") = {
+  let format_currency(number) = {
     let precision = 2
     assert(precision > 0)
     let s = str(calc.round(number, digits: precision))
-    let after_dot = s.find(regex("\..*"))
+    let after_dot = s.find(regex("\\..*"))
     if after_dot == none {
       s = s + "."
       after_dot = "."
@@ -44,12 +37,20 @@
     for i in range(precision - after_dot.len() + 1){
       s = s + "0"
     }
-    // fake de locale
-    if locale == "de" {
-      s.replace(".", ",")
-    } else {
-      s
+    // Add thousands separators and dollar sign
+    let parts = s.split(".")
+    let int_part = parts.at(0)
+    let dec_part = parts.at(1)
+    let result = ""
+    let count = 0
+    for c in int_part.rev() {
+      if count > 0 and calc.rem(count, 3) == 0 {
+        result = "," + result
+      }
+      result = c + result
+      count += 1
     }
+    "$" + result + "." + dec_part
   }
 
   set text(number-type: "old-style")
@@ -57,7 +58,7 @@
   smallcaps[
     *#author.name* •
     #author.street •
-    #author.zip #author.city
+    #author.city, #author.zip
   ]
 
   v(1em)
@@ -67,85 +68,107 @@
     #set text(size: 1.2em)
     #recipient.name \
     #recipient.street \
-    #recipient.zip
-    #recipient.city
+    #recipient.city, #recipient.zip
   ]
 
   v(4em)
 
   grid(columns: (1fr, 1fr), align: bottom, heading[
-    Rechnung \##invoice-nr
+    Invoice \##invoice-nr
   ], [
     #set align(right)
-    #author.city, *#invoice-date.display("[day].[month].[year]")*
+    #author.city, *#invoice-date.display("[month]/[day]/[year]")*
   ])
 
-  let base_price_f = if kleinunternehmer {
-    1.0
-  } else if includes-vat {
-    1.0 / (1.0 + vat)
-  } else {
-    1.0
-  }
+  // Calculate item totals
+  let item_totals = items.map((item) => {
+    let hours = item.at("hours", default: 1)
+    let rate = item.at("rate", default: item.at("price", default: 0))
+    let discount = item.at("discount", default: 0)
+    let base = hours * rate
+    let disc_amount = base * discount
+    let total = base - disc_amount
+    (base: base, discount_amount: disc_amount, total: total, hours: hours, rate: rate, discount: discount, description: item.description)
+  })
 
-  let total_f = if kleinunternehmer {
-    1.0
-  } else if includes-vat {
-    1.0
-  } else {
-    1.0 + vat
-  }
+  let base_total = item_totals.map((i) => i.base).sum()
+  let discount_total = item_totals.map((i) => i.discount_amount).sum()
+  let subtotal = base_total - discount_total
 
-  let vat_f = if kleinunternehmer {
+  let tax_amount = if tax-rate > 0 and not includes-tax {
+    subtotal * tax-rate
+  } else {
     0.0
-  } else if includes-vat {
-    vat / (1.0 + vat)
-  } else {
-    vat
   }
+  let final_total = subtotal + tax_amount
 
-  let base_price = base_price_f * items.map((item) => item.price).sum()
-  let total_vat = items.map((item) => item.price * vat_f).sum()
-  let total = items.map((item) => item.price * total_f).sum()
-
-  let items = items.enumerate().map(
-    ((id, item)) => ([#str(id + 1).], [#item.description], [#format_currency(item.price * base_price_f)€],),
+  let table_rows = item_totals.enumerate().map(
+    ((id, item)) => {
+      let disc_str = if item.discount > 0 {
+        " (-" + str(calc.round(item.discount * 100)) + "%)"
+      } else {
+        ""
+      }
+      (
+        [#str(id + 1).],
+        [#item.description],
+        [#str(item.hours)],
+        [#format_currency(item.rate)/hr#disc_str],
+        [#format_currency(item.total)],
+      )
+    }
   ).flatten()
 
   [
     #set text(number-type: "lining")
     #table(
       stroke: none,
-      columns: (auto, 10fr, auto),
+      columns: (auto, 10fr, auto, auto, auto),
       align: ((column, row) => if column == 1 { left } else { right }),
       table.hline(stroke: (thickness: 0.5pt)),
-      [*Pos.*], [*Beschreibung*], [*Preis*],
+      [*No.*], [*Description*], [*Hours*], [*Rate*], [*Amount*],
       table.hline(),
-      ..items, table.hline(),
+      ..table_rows, table.hline(),
       [],
       [
         #set align(end)
-        Summe:
+        Subtotal:
       ],
-      [#format_currency(base_price)€],
-      table.hline(start: 2),
-      ..if not kleinunternehmer {(
+      [],
+      [],
+      [#format_currency(base_total)],
+      table.hline(start: 4),
+      ..if discount_total > 0 {(
         [],
         [
-          #set text(number-type: "old-style")
           #set align(end)
-          #str(vat * 100)% Mehrwertsteuer:
+          Discount:
         ],
-        [#format_currency(total_vat)€],
-        table.hline(start: 2),
         [],
-      )} else {([], [], [], [])},
+        [],
+        [-#format_currency(discount_total)],
+        table.hline(start: 4),
+      )} else {([], [], [], [], [], [])},
+      ..if tax-rate > 0 and not includes-tax {(
+        [],
+        [
+          #set align(end)
+          Tax (#str(tax-rate * 100)%):
+        ],
+        [],
+        [],
+        [#format_currency(tax_amount)],
+        table.hline(start: 4),
+      )} else {([], [], [], [], [], [])},
+      [],
       [
         #set align(end)
-        *Gesamt:*
+        *Total:*
       ],
-      [*#format_currency(total)€*],
-      table.hline(start: 2),
+      [],
+      [],
+      [*#format_currency(final_total)*],
+      table.hline(start: 4),
     )
   ]
 
@@ -154,36 +177,40 @@
   [
     #set text(size: 0.8em)
     #invoice-text
-    #if kleinunternehmer [
-      Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.
-    ]
+
+    #v(0.5em)
+
+    #emph(rate-note)
   ]
 
   v(1em)
 
-  // This is the content of an https://en.wikipedia.org/wiki/EPC_QR_code version 002
-  // Eventually this could be put into its own package?
-  let epc-qr-content = (
-    "BCD\n" + "002\n" + "1\n" + "SCT\n" + bank-account.bic + "\n" + bank-account.name + "\n" + bank-account.iban + "\n" + "EUR" + format_currency(total, locale: "en") + "\n" + "\n" + invoice-nr + "\n" + "\n" + "\n"
-  )
-
+  // Bank details for US
   grid(columns: (1fr, 1fr), gutter: 1em, align: top, [
     #set par(leading: 0.40em)
     #set text(number-type: "lining")
-    #(bank-account
-      .at("gender", default: (:))
-      .at("account_holder", default: "Kontoinhaberin")): #bank-account.name \
-    Kreditinstitut: #bank-account.bank \
-    IBAN: *#iban(bank-account.iban)* \
-    BIC: #bank-account.bic
-  ], qr-code(epc-qr-content, height: 4em))
+    Account Holder: #bank-account.name \
+    Bank: #bank-account.bank \
+    #if "routing" in bank-account [
+      Routing No: *#bank-account.routing* \
+    ]
+    #if "account" in bank-account [
+      Account No: *#bank-account.account* \
+    ]
+    #if "iban" in bank-account [
+      IBAN: #bank-account.iban \
+    ]
+    #if "bic" in bank-account [
+      BIC: #bank-account.bic \
+    ]
+  ], [])
 
   [
-    Steuernummer: #author.tax_nr
+    Tax ID / EIN: #author.at("tax_id", default: author.at("tax_nr", default: "-"))
 
     #v(0.5em)
 
-    Mit freundlichen Grüßen
+    Sincerely,
 
     #if "signature" in author [
       #scale(origin: left, x: 400%, y: 400%, author.signature)

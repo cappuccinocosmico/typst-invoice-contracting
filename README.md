@@ -1,79 +1,81 @@
-# German invoice template
+# US Contractor Invoice Template
 
-A template for writing invoices, inspired by the [beautiful LaTeX template by @mrzool.](https://github.com/mrzool/invoice-boilerplate/)
+A template for writing contractor invoices in the US, originally inspired by the [beautiful LaTeX template by @mrzool](https://github.com/mrzool/invoice-boilerplate/) and the [classy-german-invoice](https://github.com/erictapen/typst-invoice) Typst template.
+
+## Features
+
+- Hour tracking with transparent rates
+- Automatic calculation of line-item totals
+- Optional per-item discounts (shown inline on the rate)
+- Configurable sales tax
+- US English language and date formatting (`MM/DD/YYYY`)
+- USD currency formatting
+- Configurable rate-negotiation note
+
+## Usage
 
 ```typ
-#import "@preview/classy-german-invoice:0.3.2": invoice
+#import "/lib.typ": invoice
 
 #show: invoice(
   // Invoice number
-  "2023-001",
+  "2024-001",
   // Invoice date
   datetime(year: 2024, month: 09, day: 03),
-  // Items
+  // Items (hours × rate = amount)
   (
     (
-      description: "The first service provided. The first service provided. The first service provided",
-      price: 200,
+      description: "Project planning",
+      hours: 8.0,
+      rate: 150.00,
     ),
     (
-      description: "The second service provided",
-      price: 150.2
+      description: "Development",
+      hours: 12.5,
+      rate: 150.00,
+      discount: 0.10, // 10% discount applied
     ),
   ),
   // Author
   (
-    name: "Kerstin Humm",
-    street: "Straße der Privatsphäre und Stille 1",
-    zip: "54321",
-    city: "Potsdam",
-    tax_nr: "12345/67890",
-    // optional signature, can be omitted
+    name: "Your Name",
+    street: "123 Main St",
+    city: "Anytown",
+    zip: "12345",
+    tax_id: "12-3456789",
     signature: image("example_signature.png", width: 5em)
   ),
   // Recipient
   (
-    name: "Erika Mustermann",
-    street: "Musterallee",
-    zip: "12345",
-    city: "Musterstadt",
+    name: "Client Company, Inc.",
+    street: "456 Business Blvd",
+    city: "Commerce City",
+    zip: "67890",
   ),
   // Bank account
   (
-    name: "Todd Name",
-    bank: "Deutsche Postbank AG",
-    iban: "DE89370400440532013000",
-    bic: "PBNKDEFF",
-    // There is currently only one gendered term in this template.
-    // You can overwrite it, or omit it and just choose the default.
-    gender: (account_holder: "Kontoinhaberin")
+    name: "Your Name",
+    bank: "Chase Bank",
+    routing: "021000021",
+    account: "1234567890",
   ),
-  // Umsatzsteuersatz (VAT)
-  vat: 0.19,
-  kleinunternehmer: true,
+  // Sales tax rate (set to 0.0 if not applicable)
+  tax-rate: 0.0,
+  // Optional note about rate flexibility
+  rate-note: "Hours and rates are provided for transparency. Please don't hesitate to reach out if you would like to discuss any adjustments.",
 )
 ```
 
-![](thumbnail.png)
+## Item Fields
 
-
-
-## Scope
-
-This template should work well for freelancers and small companies in the german market, that don't have an existing system in place for order tracking. Or to put it the other way round; This template is for people that mostly have to fulfill outside requirements with their invoices and don't so much benefit from extensive tracking themselves.
-
-
-## Features
-
-- [X] multiple invoice items
-- [X] configurable VAT
-- [X] configurable § 19 UStG (Kleinunternehmerregelung) note
-- [X] configurable signature from PNG file
-- [X] employs both lining and old-style number types, depending on the application
-- [X] [EPC QR Code](https://en.wikipedia.org/wiki/EPC_QR_code) for easier banking transactions
-- [ ] recipient address is guaranteed to fit in a windowed envelope (DIN 5008)
-
+| Field       | Required | Description                                                            |
+|-------------|----------|------------------------------------------------------------------------|
+| `description` | Yes    | Description of the work performed                                      |
+| `hours`       | No (defaults to 1)     | Hours worked                                       |
+| `rate`        | No (defaults to `price` or 0) | Hourly rate in USD                      |
+| `price`       | No (legacy) | Total price for the line item (used if `rate` is omitted)             |
+| `discount`    | No (defaults to 0) | Discount as a decimal (e.g. 0.10 for 10%)                            |
 
 ## Disclaimer
 
-This template doesn't constitute legal advice. Please check for yourself whether it fulfills your legal requirements!
+This template doesn't constitute legal or tax advice. Please check for yourself whether it fulfills your requirements!

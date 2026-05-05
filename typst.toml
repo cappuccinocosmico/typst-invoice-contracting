@@ -1,13 +1,13 @@
 [package]
-name = "classy-german-invoice"
-version = "0.3.2"
+name = "us-contractor-invoice"
+version = "0.1.0"
 compiler = "0.14.0"
 entrypoint = "lib.typ"
 repository = "https://github.com/erictapen/typst-invoice"
-authors = ["Kerstin Humm <@erictapen>"]
+authors = ["Kerstin Humm <@erictapen>", "Modified for US use"]
 license = "MIT-0"
-description = "Minimalistic invoice for germany based freelancers"
-keywords = ["invoice", "german", "banking"]
+description = "Minimalistic contractor invoice with hour tracking for US-based freelancers"
+keywords = ["invoice", "us", "contractor", "hours", "freelance"]
 categories = ["layout", "office"]
 disciplines = []
 
